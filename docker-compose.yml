@@ -40,8 +40,10 @@ services:
 
   backend:
     build: ./backend
-    image: megacrm-backend
     container_name: megacrm-backend
+    labels:
+      - "coolify.managed=true"
+      - "coolify.zproxy.fqdn=http://api-crm.megaacessoriosautomotivos.com.br:3001"
     ports:
       - "${PORT:-3001}:3001"
     environment:
