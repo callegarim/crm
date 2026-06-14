@@ -2,44 +2,43 @@ version: '3.8'
 
 services:
   postgres:
-    image: postgres:15-alpine
+    image: 'postgres:15-alpine'
     container_name: megacrm-postgres
     environment:
       POSTGRES_DB: megacrm
-      POSTGRES_USER: ${DB_USER}
-      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_USER: '${DB_USER}'
+      POSTGRES_PASSWORD: '${DB_PASSWORD}'
     volumes:
-      - postgres_data:/var/lib/postgresql/data
-    ports:
-      - "5432:5432"
+      - 'postgres_data:/var/lib/postgresql/data'
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d megacrm"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+      test:
+        - CMD-SHELL
+        - 'pg_isready -U ${DB_USER} -d megacrm'
+      interval: 5s
+      timeout: 3s
+      retries: 10
     restart: unless-stopped
-    networks:
-      - mega-net
 
   redis:
-    image: redis:7-alpine
+    image: 'redis:7-alpine'
     container_name: megacrm-redis
     volumes:
-      - redis_data:/data
-    command: redis-server --appendonly yes
-    ports:
-      - "6379:6379"
+      - 'redis_data:/data'
+    command: 'redis-server --appendonly yes'
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+      test:
+        - CMD
+        - redis-cli
+        - ping
+      interval: 5s
+      timeout: 3s
+      retries: 10
     restart: unless-stopped
-    networks:
-      - mega-net
 
   backend:
-    build: ./backend
+    build:
+      context: 'https://github.com/callegarim/CRM.git#main:backend'
+      dockerfile: Dockerfile
     image: megacrm-backend:latest
     pull_policy: never
     container_name: megacrm-backend
@@ -47,7 +46,7 @@ services:
       - "coolify.managed=true"
       - "coolify.zproxy.fqdn=http://api-crm.megaacessoriosautomotivos.com.br:3001"
     ports:
-      - "${PORT:-3001}:3001"
+      - '3001:3001'
     environment:
       - NODE_ENV=production
       - PORT=3001
@@ -65,13 +64,7 @@ services:
       redis:
         condition: service_healthy
     restart: unless-stopped
-    networks:
-      - mega-net
 
 volumes:
-  postgres_data:
-  redis_data:
-
-networks:
-  mega-net:
-    driver: bridge
+  postgres_data: null
+  redis_data: null
