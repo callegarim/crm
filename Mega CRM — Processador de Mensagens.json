@@ -1,0 +1,736 @@
+{
+  "name": "Mega CRM — Processador de Mensagens",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "mega-crm-message",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "02cd9d08-9546-4d09-b43e-2f7f70c10044",
+      "name": "Receber do Backend",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        96
+      ],
+      "webhookId": "ac41605a-51e4-4742-924f-01995d4dfed6"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "{\"ok\":true}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "id": "ba587b27-26a7-4893-964f-06b4ec6c7d14",
+      "name": "Responder 200 OK",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        224,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "conv-id",
+              "name": "conversation_id",
+              "value": "={{ $json.body?.conversation_id ?? $json.conversation_id }}",
+              "type": "string"
+            },
+            {
+              "id": "contact-id",
+              "name": "contact_id",
+              "value": "={{ $json.body?.contact?.id ?? $json.contact?.id }}",
+              "type": "string"
+            },
+            {
+              "id": "contact-name",
+              "name": "contact_name",
+              "value": "={{ $json.body?.contact?.name ?? $json.contact?.name }}",
+              "type": "string"
+            },
+            {
+              "id": "contact-phone",
+              "name": "contact_phone",
+              "value": "={{ $json.body?.contact?.phone ?? $json.contact?.phone }}",
+              "type": "string"
+            },
+            {
+              "id": "msg-content",
+              "name": "message_content",
+              "value": "={{ $json.body?.message?.content ?? $json.message?.content }}",
+              "type": "string"
+            },
+            {
+              "id": "msg-type",
+              "name": "message_type",
+              "value": "={{ $json.body?.message?.content_type ?? $json.message?.content_type ?? \"text\" }}",
+              "type": "string"
+            },
+            {
+              "id": "msg-id",
+              "name": "message_id",
+              "value": "={{ $json.body?.message?.id ?? $json.message?.id }}",
+              "type": "string"
+            },
+            {
+              "id": "agent-id",
+              "name": "agent_id",
+              "value": "={{ $json.body?.agent_id ?? $json.agent_id }}",
+              "type": "string"
+            },
+            {
+              "id": "instance",
+              "name": "instance",
+              "value": "={{ $json.body?.instance ?? $json.instance ?? \"mega-whatsapp\" }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "84080f46-05f3-44ec-b881-c1596f1d36c2",
+      "name": "Normalizar Payload",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        224,
+        192
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{ $vars.BACKEND_URL }}/api/agents/{{ $json.agent_id }}/redis-prompt",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-internal-secret",
+              "value": "={{ $vars.INTERNAL_SECRET }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 5000
+        }
+      },
+      "id": "09e24ca9-5c06-4204-aaef-5748c07677f3",
+      "name": "Buscar Prompt no Redis",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        448,
+        192
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{ $vars.BACKEND_URL }}/api/conversations/{{ $(\"Normalizar Payload\").item.json.conversation_id }}/messages?limit=20",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-internal-secret",
+              "value": "={{ $vars.INTERNAL_SECRET }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 5000
+        }
+      },
+      "id": "c94a8b54-8bed-4b13-bcba-30890a1c2a50",
+      "name": "Buscar Histórico",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        672,
+        192
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{ $vars.BACKEND_URL }}/api/settings/business-hours-check",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-internal-secret",
+              "value": "={{ $vars.INTERNAL_SECRET }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 3000
+        }
+      },
+      "id": "ec441397-9c20-4d56-b749-f127e359ad76",
+      "name": "Verificar Horário Comercial",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        896,
+        192
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.is_open }}",
+              "operator": {
+                "type": "boolean",
+                "operation": "true"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "575b4801-4dea-459f-86da-aea6909598b0",
+      "name": "Está no Horário?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1120,
+        192
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "full-prompt",
+              "name": "full_prompt",
+              "value": "={{ $(\"Buscar Prompt no Redis\").item.json.prompt }}\n\nCliente: {{ $(\"Normalizar Payload\").item.json.contact_name }}\nTelefone: {{ $(\"Normalizar Payload\").item.json.contact_phone }}\n\nHistórico recente:\n{{ $(\"Buscar Histórico\").item.json.messages.slice(-10).map(m => (m.direction === \"inbound\" ? \"Cliente: \" : \"Assistente: \") + m.content).join(\"\\n\") }}\n\nMensagem atual do cliente: {{ $(\"Normalizar Payload\").item.json.message_content }}",
+              "type": "string"
+            },
+            {
+              "id": "conv-id-2",
+              "name": "conversation_id",
+              "value": "={{ $(\"Normalizar Payload\").item.json.conversation_id }}",
+              "type": "string"
+            },
+            {
+              "id": "phone-2",
+              "name": "contact_phone",
+              "value": "={{ $(\"Normalizar Payload\").item.json.contact_phone }}",
+              "type": "string"
+            },
+            {
+              "id": "instance-2",
+              "name": "instance",
+              "value": "={{ $(\"Normalizar Payload\").item.json.instance }}",
+              "type": "string"
+            },
+            {
+              "id": "model-2",
+              "name": "llm_model",
+              "value": "={{ $(\"Buscar Prompt no Redis\").item.json.llm_model ?? \"llama-3.3-70b-versatile\" }}",
+              "type": "string"
+            },
+            {
+              "id": "delay-2",
+              "name": "typing_delay_ms",
+              "value": "={{ $(\"Buscar Prompt no Redis\").item.json.typing_delay_ms ?? 1500 }}",
+              "type": "number"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "9ca2be68-0e4d-4af0-a105-9fb1e5b046ab",
+      "name": "Montar Prompt Completo",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1344,
+        96
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.groq.com/openai/v1/chat/completions",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $vars.GROQ_API_KEY }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ model: $json.llm_model, messages: [{ role: \"user\", content: $json.full_prompt }], temperature: 0.7, max_tokens: 1024 }) }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "67118206-0510-4f5b-afc0-ab6f2ce5561d",
+      "name": "Chamar LLM Groq",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1568,
+        96
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "ai-resp",
+              "name": "ai_response",
+              "value": "={{ $json.choices[0].message.content }}",
+              "type": "string"
+            },
+            {
+              "id": "conv-id-3",
+              "name": "conversation_id",
+              "value": "={{ $(\"Montar Prompt Completo\").item.json.conversation_id }}",
+              "type": "string"
+            },
+            {
+              "id": "phone-3",
+              "name": "contact_phone",
+              "value": "={{ $(\"Montar Prompt Completo\").item.json.contact_phone }}",
+              "type": "string"
+            },
+            {
+              "id": "instance-3",
+              "name": "instance",
+              "value": "={{ $(\"Montar Prompt Completo\").item.json.instance }}",
+              "type": "string"
+            },
+            {
+              "id": "delay-3",
+              "name": "typing_delay_ms",
+              "value": "={{ $(\"Montar Prompt Completo\").item.json.typing_delay_ms }}",
+              "type": "number"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "b9328f42-0c93-4bf7-81a2-1987328eda4c",
+      "name": "Extrair Resposta",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1792,
+        96
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": false,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.ai_response }}",
+              "operator": {
+                "type": "string",
+                "operation": "contains"
+              },
+              "rightValue": "[TRANSFERIR_HUMANO]"
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "fa318f34-ad11-4be4-87aa-a8671de7ff22",
+      "name": "Transferir para Humano?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        2016,
+        96
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $vars.EVOLUTION_API_URL }}/message/sendText/{{ $json.instance }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "={{ $vars.EVOLUTION_API_KEY }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ number: $json.contact_phone, text: $json.ai_response.replace(\"[TRANSFERIR_HUMANO]\", \"\").trim(), delay: $json.typing_delay_ms }) }}",
+        "options": {
+          "timeout": 10000
+        }
+      },
+      "id": "9e63a382-9b85-46d9-b895-5be51fbb8774",
+      "name": "Enviar via Evolution API",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2240,
+        96
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $vars.BACKEND_URL }}/api/conversations/{{ $(\"Extrair Resposta\").item.json.conversation_id }}/bot-reply",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-internal-secret",
+              "value": "={{ $vars.INTERNAL_SECRET }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ conversation_id: $(\"Extrair Resposta\").item.json.conversation_id, message: { content: $(\"Extrair Resposta\").item.json.ai_response.replace(\"[TRANSFERIR_HUMANO]\", \"\").trim(), content_type: \"text\", sent_by: \"bot\" }, action: \"transfer_human\" }) }}",
+        "options": {
+          "timeout": 5000
+        }
+      },
+      "id": "33eacfc3-11c4-49b3-9ca9-e096bbabe690",
+      "name": "Avisar Backend — Transferir",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2464,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $vars.BACKEND_URL }}/api/conversations/{{ $(\"Extrair Resposta\").item.json.conversation_id }}/bot-reply",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-internal-secret",
+              "value": "={{ $vars.INTERNAL_SECRET }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ conversation_id: $(\"Extrair Resposta\").item.json.conversation_id, message: { content: $(\"Extrair Resposta\").item.json.ai_response, content_type: \"text\", sent_by: \"bot\" }, action: \"replied\" }) }}",
+        "options": {
+          "timeout": 5000
+        }
+      },
+      "id": "f323b430-51e8-489b-b25c-347b68245136",
+      "name": "Avisar Backend — Respondeu",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2464,
+        192
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "away-msg",
+              "name": "away_message",
+              "value": "={{ $json.away_message }}",
+              "type": "string"
+            },
+            {
+              "id": "away-phone",
+              "name": "contact_phone",
+              "value": "={{ $(\"Normalizar Payload\").item.json.contact_phone }}",
+              "type": "string"
+            },
+            {
+              "id": "away-instance",
+              "name": "instance",
+              "value": "={{ $(\"Normalizar Payload\").item.json.instance }}",
+              "type": "string"
+            },
+            {
+              "id": "away-conv",
+              "name": "conversation_id",
+              "value": "={{ $(\"Normalizar Payload\").item.json.conversation_id }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "019c5907-b11a-4b16-90b8-366cf7c34f65",
+      "name": "Montar Away Message",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1344,
+        288
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $vars.EVOLUTION_API_URL }}/message/sendText/{{ $json.instance }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "={{ $vars.EVOLUTION_API_KEY }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ number: $json.contact_phone, text: $json.away_message }) }}",
+        "options": {
+          "timeout": 10000
+        }
+      },
+      "id": "c2d20b53-2f53-427b-a7ca-1b4b53abfa3c",
+      "name": "Enviar Away Message",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1568,
+        288
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Receber do Backend": {
+      "main": [
+        [
+          {
+            "node": "Responder 200 OK",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Normalizar Payload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalizar Payload": {
+      "main": [
+        [
+          {
+            "node": "Buscar Prompt no Redis",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Buscar Prompt no Redis": {
+      "main": [
+        [
+          {
+            "node": "Buscar Histórico",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Buscar Histórico": {
+      "main": [
+        [
+          {
+            "node": "Verificar Horário Comercial",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Verificar Horário Comercial": {
+      "main": [
+        [
+          {
+            "node": "Está no Horário?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Está no Horário?": {
+      "main": [
+        [
+          {
+            "node": "Montar Prompt Completo",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Montar Away Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Montar Prompt Completo": {
+      "main": [
+        [
+          {
+            "node": "Chamar LLM Groq",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Chamar LLM Groq": {
+      "main": [
+        [
+          {
+            "node": "Extrair Resposta",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extrair Resposta": {
+      "main": [
+        [
+          {
+            "node": "Transferir para Humano?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Transferir para Humano?": {
+      "main": [
+        [
+          {
+            "node": "Enviar via Evolution API",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Enviar via Evolution API",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Enviar via Evolution API": {
+      "main": [
+        [
+          {
+            "node": "Avisar Backend — Transferir",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Avisar Backend — Respondeu",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Montar Away Message": {
+      "main": [
+        [
+          {
+            "node": "Enviar Away Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": true
+  },
+  "versionId": "0f9b5e58-bb02-4c29-b147-781622bf2c7e",
+  "meta": {
+    "aiBuilderAssisted": true,
+    "builderVariant": "mcp",
+    "instanceId": "31072bd0bf3eddcb878727771f19a41eb869cf819e45b2b65ded8b2c79e1314f"
+  },
+  "nodeGroups": [],
+  "id": "qpFoK0dFaiRhdqcK",
+  "tags": []
+}

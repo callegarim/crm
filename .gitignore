@@ -1,0 +1,39 @@
+# Dependencies
+node_modules/
+
+# Environment
+.env
+.env.local
+.env.production
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# Build
+dist/
+build/
+
+# Docker volumes
+postgres_data/
+redis_data/
+n8n_data/
+
+# Uploads
+uploads/*
+!uploads/.gitkeep
+
+# Coverage
+coverage/
+
+# Temp files
+_zip_temp/

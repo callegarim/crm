@@ -1,0 +1,104 @@
+# ============================================
+# Mega CRM — Docker Compose para Desenvolvimento Local
+# Uso: docker compose -f docker-compose.dev.yml up -d
+# ============================================
+
+version: '3.8'
+
+services:
+  # ── PostgreSQL ──
+  postgres:
+    image: postgres:15-alpine
+    container_name: megacrm-postgres-dev
+    environment:
+      POSTGRES_DB: megacrm
+      POSTGRES_USER: ${DB_USER:-megacrm_user}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-senha_forte_aqui}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-megacrm_user} -d megacrm"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    networks:
+      - mega-net
+
+  # ── Redis ──
+  redis:
+    image: redis:7-alpine
+    container_name: megacrm-redis-dev
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    networks:
+      - mega-net
+
+  # ── Backend (Node.js + Nodemon hot reload) ──
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: megacrm-backend-dev
+    command: npx nodemon --watch src src/server.js
+    volumes:
+      - ./backend/src:/app/src
+      - /app/node_modules
+    ports:
+      - "${PORT:-3001}:3001"
+    environment:
+      - NODE_ENV=development
+      - PORT=3001
+      - DATABASE_URL=postgresql://${DB_USER:-megacrm_user}:${DB_PASSWORD:-senha_forte_aqui}@postgres:5432/megacrm
+      - REDIS_URL=redis://redis:6379
+      - JWT_SECRET=${JWT_SECRET:-dev_secret_troque_em_producao_min_64_chars_seguro_123456}
+      - EVOLUTION_API_URL=${EVOLUTION_API_URL:-https://sua-evolution.com}
+      - EVOLUTION_API_KEY=${EVOLUTION_API_KEY:-sua_chave_aqui}
+      - EVOLUTION_WEBHOOK_SECRET=${EVOLUTION_WEBHOOK_SECRET:-secret_para_validacao_hmac}
+      - EVOLUTION_INSTANCE=${EVOLUTION_INSTANCE:-mega-whatsapp}
+      - N8N_WEBHOOK_URL=${N8N_WEBHOOK_URL:-http://host.docker.internal:5678/webhook/mega-crm-message}
+      - INTERNAL_SECRET=${INTERNAL_SECRET:-dev_internal_secret_16chars}
+      - AUTO_MIGRATE=true
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - mega-net
+
+  # ── Frontend (Vite dev server + hot reload) ──
+  frontend:
+    image: node:20-alpine
+    container_name: megacrm-frontend-dev
+    working_dir: /app
+    command: sh -c "npm install && npm run dev -- --host 0.0.0.0"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    ports:
+      - "5173:5173"
+    environment:
+      - VITE_API_URL=http://localhost:3001/api
+      - VITE_WS_URL=http://localhost:3001
+    depends_on:
+      - backend
+    networks:
+      - mega-net
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  mega-net:
+    driver: bridge
