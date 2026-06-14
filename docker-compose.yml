@@ -51,8 +51,8 @@ services:
     environment:
       - NODE_ENV=production
       - PORT=3001
-      - DATABASE_URL=postgresql://megacrm_user:megacrm_secure_password_123@postgres:5432/megacrm
-      - REDIS_URL=redis://redis:6379
+      - DATABASE_URL=postgresql://megacrm_user:megacrm_secure_password_123@postgres-k7qxrubtim7jnmx2410mc1kt:5432/megacrm
+      - REDIS_URL=redis://redis-k7qxrubtim7jnmx2410mc1kt:6379
       - JWT_SECRET=${JWT_SECRET}
       - EVOLUTION_API_URL=${EVOLUTION_API_URL}
       - EVOLUTION_API_KEY=${EVOLUTION_API_KEY}
