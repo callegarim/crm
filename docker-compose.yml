@@ -40,6 +40,7 @@ services:
 
   backend:
     build: ./backend
+    image: megacrm-backend
     container_name: megacrm-backend
     ports:
       - "${PORT:-3001}:3001"
