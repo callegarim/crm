@@ -40,6 +40,8 @@ services:
 
   backend:
     build: ./backend
+    image: megacrm-backend:latest
+    pull_policy: never
     container_name: megacrm-backend
     labels:
       - "coolify.managed=true"
