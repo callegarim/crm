@@ -9,7 +9,7 @@ services:
       POSTGRES_USER: '${DB_USER}'
       POSTGRES_PASSWORD: '${DB_PASSWORD}'
     volumes:
-      - 'postgres_data:/var/lib/postgresql/data'
+      - 'postgres_data_v2:/var/lib/postgresql/data'
     healthcheck:
       test:
         - CMD-SHELL
@@ -66,5 +66,5 @@ services:
     restart: unless-stopped
 
 volumes:
-  postgres_data: null
+  postgres_data_v2: null
   redis_data: null
